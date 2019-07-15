@@ -1,0 +1,102 @@
+*[meta] {
+	title: "The Blank Slate",
+	author: "Richard Bond",
+	version: "0.0.1",
+	copyright: "Richard Bond 2019"
+}*
+
+*[init] {
+	frame.data.triedDoor = false;
+	frame.data.callout = "Anybody There?!";
+	frame.data.knockPattern = [];
+	frame.data.knockPatternRef = ["knock", "wait", "knock", "wait", "knock", "knock", "knock", "wait", "knock", "knock"];
+}*
+
+*[scene #start] The Beginning...
+
+*[text] 
+	You awake to find yourself in an unfamiliar room with no memory of how you got there or why. The walls are dull grey. Concrete. And so are the floors for that matter. You can feel a musty dampness in the air that smells old and slightly rotten.
+
+*[choice]
+	*[option] Get up...
+
+*[text]
+	You peel yourself off the hard, cold floor and feel your muscles groan in protest. Who knows how long you spent down there. Looking down, you can see that you are dressed in light blue jumpsuit and thick, dirty socks but no shoes. The jump suit has a company logo on it with stylized text that reads "Leicher Robotics". The name is recognizable to you but you can't seem to recall anything about it.
+
+	[continue]
+
+	The fog of sleepiness is beginning to clear and you make a slow, 180-degree turn, examining the room as you do so.
+
+	There isn't really much to see, however. The room is small and rectangular, but tall, with one narrow window just out of your reach. There is only one door, but you can't see a handle. There is also a drain in the floor and two buckets sitting empty in the corner. Aside from that the only other things to see are some markings etched into the wall.
+
+	You are now quite certain this is a prison cell...
+
+*[choice #cell-options]
+	*[option try-door] Try the door
+	*[option look-drain] Examine the drain
+	*[option read-markings] Examine the markings
+	*[option look-buckets] Examine the buckets
+	*[option call-out] Call for help
+
+*[text #try-door]
+	Like any good prison door, this one is locked tight with hinges on the outside. It's also solid steel and windowless for good measure. You won't be forcing that open.
+
+*[choice #door-options]
+	*[option listen-door] Listen
+	*[option knock-door] Knock on door
+	*[option cell-options] Go back
+
+*[text #listen-door]
+	You wait for a moment to listen, but hear nothing.
+
+*[script #wait-script] {
+	frame.data.knockPattern.push("wait");
+	if (frame.data.knockPattern.length > 10) { frame.data.knockPattern.shift(); }
+}*
+
+*[door-options]
+
+*[text #knock-door]
+	You rap your knuckles once on the door, generating a metalic thud.
+
+*[script #knock-script] {
+	frame.data.knockPattern.push("knock");
+	if (frame.data.knockPattern.length > 10) { frame.data.knockPattern.shift(); }
+	if (JSON.stringify(knockPattern) == JSON.stringify(knockRef)) { frame.nextElement = "strange-noise" }
+}*
+
+*[door-options]
+
+*[text #look-drain]
+	It's a simple drain in the middle of the floor. It's made of aluminum, but the steel screws that hold it in place are severely rusted.
+
+*[text #read-markings]
+	The scratch marks etched in the wall seemed random at first, but upon closer examination you can see words...
+
+	"knock wait knock wait knock knock knock wait knock knock"
+
+	There are also an assortment of seemingly random scratches and drawings painstakingly scratched into the wall by the cell's previous occupants. Certainly nothing that strikes you as sane or useful.
+
+*[cell-options]
+
+*[text look-buckets]
+	The buckets are empty. Presumably, you are meant to fill them when the need strikes.
+
+*[cell-options]
+
+*[text call-out]
+	"<*callout*>" You call out for help at the top of your lungs. 
+
+	Only the echo of your own voice comes back to meet you.
+
+*[cell-options]
+
+*[text strange-noise]
+	You hear a faint rustling followed by heavy footsteps. It is difficult to gauge how far away they are, but the footsteps seem to be heading toward you.
+
+	[continue]
+
+	As they get closer, you notice there is a mechanical sound to the movement and the footfalls are unreasonably heavy. You remember that you are wearing the jumpsuit of a robotics company and are struck by the distinct feeling that whatever is on the other side of that door is not human...
+
+*[choice]
+	[option] To Be Continued...

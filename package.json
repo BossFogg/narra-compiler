@@ -1,0 +1,19 @@
+{
+  "name": "narra-compiler",
+  "version": "0.0.1",
+  "description": "Compiles .narra files into json files readable by NarraPlayer",
+  "main": "nCompile.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BossFogg/narra-compiler.git"
+  },
+  "author": "Richard Bond",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/BossFogg/narra-compiler/issues"
+  },
+  "homepage": "https://github.com/BossFogg/narra-compiler#readme"
+}
