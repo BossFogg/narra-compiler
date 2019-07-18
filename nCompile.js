@@ -23,15 +23,30 @@ else {
 }
 
 let output = {
+	scriptNum: 0,
 	frame: {
-		scripts: {},
+		scripts: {
+			refList: [],
+			scriptOfIndex: function(refID, args) {
+				if (typeof refID != "Number") {
+					console.log("ERROR: Reference ID must be a number!");
+					return;
+				}
+				if (!args.length) { args = []; }
+				let scriptRef = this.refList[refID];
+				scripts[scriptRef].apply(scriptsObj, args);
+			}
+		},
 		data: {}
 	},
 }
 
 output.parseNarra = function (narra) {
+	let scenes = narra.match(/(\*\[scene[\s\S]*?)(?=\*\[(scene|end))/gi);
+	console.log(scenes);
+	this.parseScenes(scenes);
 	this.frame.meta = this.getMeta(narra);
-	this.frame.scripts = this.getScripts(narra);
+	//this.getScripts(narra);
 	this.frame.scripts.init = this.getInit(narra);
 	console.log(this.frame);
 }
@@ -51,31 +66,34 @@ output.getMeta = function (fileStr) {
 	return JSON.parse(meta);
 }
 
-output.getScripts = function(fileStr) {
-	let scripts = fileStr.match(/\*\[script[\S\s]*?\}\*/gi);
-	let cleanScripts = {}
-	let scriptNum = 1;
-	for (let script of scripts) {
-		let scriptName = script.match(/\#([a-zA-Z0-9-]*)/)[1];
-		if (!scriptName) { scriptName = "script" + scriptNum; }
-		scriptRaw = script.match(/\{[\s\S]*\}/)[0];
-		scriptClean = scriptRaw.replace(/\r|\n|\t/g, "");
-		let func = new Function("", scriptClean);
-		let output = {
-			exec: func,
-			index: scriptNum
-		}
-		cleanScripts[scriptName] = output;
-		scriptNum++;
-	}
-	return cleanScripts;
-} 
+output.parseScenes = function (script) {
+	//cycle through scenes and break apart into component parts
+}
+
+// output.getScripts = function(fileStr) {
+// 	let scripts = fileStr.match(/\*\[script[\S\s]*?\}\*/gi);
+// 	for (let script of scripts) {
+// 		this.saveScript(script, scriptNum);
+// 		scriptNum++;
+// 	}
+// } 
+
+output.saveScript = function (script, index) {
+	let scriptName = script.match(/\#([a-zA-Z0-9-]*)/)[1];
+	if (!scriptName) { scriptName = "script" + index; }
+	scriptRaw = script.match(/\{([\s\S]*)\}/)[1];
+	this.frame.scripts.refList.push(scriptName);
+	this.frame.scripts[scriptName] = new Function("", scriptRaw.replace(/\r|\n|\t/g, ""));
+}
 
 output.getInit = function (fileStr) {
 	let initRaw = fileStr.match(/\*\[init\][\S\s]*?\}[\*]/i)[0];
-	initRaw = initRaw.match(/\{[\s\S]*\}/)[0];
+	initRaw = initRaw.match(/\{([\s\S]*)\}/)[1];
 	let initClean = initRaw.replace(/\r|\n|\t/g, "");
 	return new Function("", initClean);
 }
 
 output.getFile(filePath);
+
+
+export default output;
