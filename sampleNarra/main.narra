@@ -85,7 +85,7 @@
 *[cell-options]
 
 *[text call-out]
-	"<$ frame.data.callout *>" You call out for help at the top of your lungs. 
+	"<* frame.data.callout *>" You call out for help at the top of your lungs. 
 
 	Only the echo of your own voice comes back to meet you.
 

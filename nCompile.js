@@ -24,17 +24,31 @@ else {
 
 let output = {
 	scriptNum: 0,
+	sceneNum: 0,
+	elementNum: 0,
 	frame: {
 		scripts: {
 			refList: [],
 			scriptOfIndex: function(refID, args) {
-				if (typeof refID != "Number") {
-					console.log("ERROR: Reference ID must be a number!");
-					return;
-				}
 				if (!args.length) { args = []; }
 				let scriptRef = this.refList[refID];
-				scripts[scriptRef].apply(scriptsObj, args);
+				scripts[scriptRef].apply(scripts, args);
+			}
+		},
+		scenes: {
+			refList: [],
+			sceneOfIndex: function(refID, args) {
+				if (!args.length) { args = []; }
+				let sceneRef = this.refList[refID];
+				scenes[sceneRef].apply(scenes, args);
+			}
+		},
+		elements: {
+			refList: [],
+			sceneOfIndex: function(refID, args) {
+				if (!args.length) { args = []; }
+				let elementRef = this.refList[refID];
+				scenes[elementRef].apply(elements, args);
 			}
 		},
 		data: {}
@@ -43,7 +57,6 @@ let output = {
 
 output.parseNarra = function (narra) {
 	let scenes = narra.match(/(\*\[scene[\s\S]*?)(?=\*\[(scene|end))/gi);
-	console.log(scenes);
 	this.parseScenes(scenes);
 	this.frame.meta = this.getMeta(narra);
 	//this.getScripts(narra);
@@ -66,17 +79,53 @@ output.getMeta = function (fileStr) {
 	return JSON.parse(meta);
 }
 
-output.parseScenes = function (script) {
-	//cycle through scenes and break apart into component parts
+output.parseScenes = function (scenes) {
+	for (let scene of scenes) {
+		let sceneName = this.getTagName(scene, "scene", this.sceneNum);
+		this.sceneNum++;
+		scene += "*[";
+		let elements = this.parseElements(scene.match(/\*\[[\s\S]*?(?=\*\[)/gi));
+		
+	}
+	
 }
 
-// output.getScripts = function(fileStr) {
-// 	let scripts = fileStr.match(/\*\[script[\S\s]*?\}\*/gi);
-// 	for (let script of scripts) {
-// 		this.saveScript(script, scriptNum);
-// 		scriptNum++;
-// 	}
-// } 
+output.parseElements = function (elements) {
+	let scene = {};
+	for (let element of elements) {
+		let newElem = {};
+		newElem.type = this.getElementType(element);
+		if (this.isBaseElement(newElem.type)) {
+			let elementName = this.getTagName(element, elementType, this.elementNum);
+			this.elementNum++;
+			//save element based on type
+		}
+		//create reference to element
+		//add index of this element to previous element (if exists) 
+		//store reference in scene object
+	}
+
+}
+
+output.getTagName = function (element, type, index) {
+	let nameMatch = element.match(/\#([a-zA-Z0-9-]*)/);
+	let elementName;
+	if (nameMatch) { elementName = nameMatch[1]; }
+	else { elementName = type + index; }
+	return elementName;
+}
+
+output.getElementType = function (element) {
+	let type = element.match(/\*\[([\S]*?)(?=[\s]|\])/i);
+	return type[1];
+}
+
+output.isBaseElement = function (type) {
+	if (type.toLowerCase() == "text") { return true; }
+	else if (type.toLowerCase() == "choice") { return true; }
+	else if (type.toLowerCase() == "script") { return true; }
+	else { return false; }
+}
 
 output.saveScript = function (script, index) {
 	let scriptName = script.match(/\#([a-zA-Z0-9-]*)/)[1];
@@ -94,6 +143,3 @@ output.getInit = function (fileStr) {
 }
 
 output.getFile(filePath);
-
-
-export default output;
