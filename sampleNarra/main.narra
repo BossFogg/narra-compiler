@@ -42,9 +42,9 @@
 	Like any good prison door, this one is locked tight with hinges on the outside. It's also solid steel and windowless for good measure. You won't be forcing that open.
 
 *[choice #door-options]
-	*[option listen-door] Listen
-	*[option knock-door] Knock on door
-	*[option cell-options] Go back
+	[option listen-door] Listen
+	[option knock-door] Knock on door
+	[option cell-options] Go back
 
 *[text #listen-door]
 	You wait for a moment to listen, but hear nothing.
