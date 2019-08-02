@@ -12,18 +12,20 @@
 	frame.data.knockPatternRef = ["knock", "wait", "knock", "wait", "knock", "knock", "knock", "wait", "knock", "knock"];
 }*
 
+<* This is a sample story for testing the Narra Compiler *>
+
 *[scene #start] The Beginning...
 
 *[text] 
 	You awake to find yourself in an unfamiliar room with no memory of how you got there or why. The walls are dull grey. Concrete. And so are the floors for that matter. You can feel a musty dampness in the air that smells old and slightly rotten.
 
 *[choice]
-	*[option] Get up...
+	[!option] Get up...
 
 *[text]
 	You peel yourself off the hard, cold floor and feel your muscles groan in protest. Who knows how long you spent down there. Looking down, you can see that you are dressed in light blue jumpsuit and thick, dirty socks but no shoes. The jump suit has a company logo on it with stylized text that reads "Leicher Robotics". The name is recognizable to you but you can't seem to recall anything about it.
 
-	[continue]
+	[!continue]
 
 	The fog of sleepiness is beginning to clear and you make a slow, 180-degree turn, examining the room as you do so.
 
@@ -32,19 +34,19 @@
 	You are now quite certain this is a prison cell...
 
 *[choice #cell-options]
-	[option try-door] Try the door
-	[option look-drain] Examine the drain
-	[option read-markings] Examine the markings
-	[option look-buckets] Examine the buckets
-	[option call-out] Call for help
+	[!option try-door] Try the door
+	[!option look-drain] Examine the drain
+	[!option read-markings] Examine the markings
+	[!option look-buckets] Examine the buckets
+	[!option call-out] Call for help
 
 *[text #try-door]
 	Like any good prison door, this one is locked tight with hinges on the outside. It's also solid steel and windowless for good measure. You won't be forcing that open.
 
 *[choice #door-options]
-	[option listen-door] Listen
-	[option knock-door] Knock on door
-	[option cell-options] Go back
+	[!option listen-door] Listen
+	[!option knock-door] Knock on door
+	[!option cell-options] Go back
 
 *[text #listen-door]
 	You wait for a moment to listen, but hear nothing.
@@ -85,7 +87,7 @@
 *[cell-options]
 
 *[text call-out]
-	"<* frame.data.callout *>" You call out for help at the top of your lungs. 
+	"<! frame.data.callout !>" You call out for help at the top of your lungs. 
 
 	Only the echo of your own voice comes back to meet you.
 
@@ -94,12 +96,12 @@
 *[text strange-noise]
 	You hear a faint rustling followed by heavy footsteps. It is difficult to gauge how far away they are, but the footsteps seem to be heading toward you.
 
-	[continue]
+	[!continue]
 
 	As they get closer, you notice there is a mechanical sound to the movement and the footfalls are unreasonably heavy. You remember that you are wearing the jumpsuit of a robotics company and are struck by the distinct feeling that whatever is on the other side of that door is not human...
 
 *[choice]
-	[option] To Be Continued...
+	[!option] To Be Continued...
 
 *[scene]
 

@@ -136,6 +136,7 @@ output.scanner = {
 
 output.lexer = {
 	tokens: [],
+	context: [],
 	error: false,
 	throwError: function (char, token) {
 		this.error = true;
@@ -147,11 +148,17 @@ output.lexer = {
 		}
 		let errString = char.source[line].slice(pos);
 		let unexpected =  errString.match(/[\S]*(?=[\s])/);
-		console.log("Unexpected token " + unexpected + " at (" + line + ", " + pos + ")");
+		console.log("Unexpected token " + unexpected + " with context " + token.type + " at (" + line + ", " + pos + ")");
 	},
+	enterContext: function (context) { this.context.push(context); },
+	previousContext: function () { this.context.pop(); },
+	resetContext: function () { this.context = []; },
 	whiteSpace: function (char) {
 		if (char.char.match(/[\s]/)) { return true; }
 		return false;
+	},
+	viewNextChar: function (char) {
+		return output.scanner.readline(char.source, char.line, char.pos + 1);
 	},
 	blankToken: function (source, context) {
 		return {
@@ -185,62 +192,130 @@ output.lexer = {
 		this.tokens.push(token);
 		return this.blankToken(token.source, newContext);
 	},
+	readNoContext: function (char, token) {
+		if (char.char == "*") { 
+			token = this.startToken(char, "startBaseTag");
+			this.enterContext("baseTag");
+		}
+		else if (char.char == "<") { 
+			token = this.startToken(char, "startComment");
+			this.enterContext("comment");
+		}
+		else if (!this.whiteSpace(char)) { this.throwError(char); }
+		return token;
+	},
+	readBaseTag: function (char, token) {
+		if (char.char == "#") {
+			if (token.content.length) { 
+				this.saveToken(token);
+				token = this.startToken(char, "startTagLabel");
+				token = this.saveToken(token, "tagLabel");
+			}
+			else { this.throwError(char, token); }
+		}
+		if (this.whiteSpace(char)) {
+			if (token.content.length) { token = this.saveToken(token, "startTagLabel"); }
+		}
+		else if (char.char.match(/[a-zA-Z0-9-_]/)) { token = this.addCharToToken(char, token); }
+		else if (char.char == "]" && token.content) { 
+			token = this.saveToken(token, "endBaseTag");
+			token = this.addCharToToken(char, token); 
+		}
+		else { this.throwError(char, token); }
+		return token;
+	},
+	readStartBaseTag: function (char, token) {
+		if (char.char == "[") { token = this.saveToken(token, "baseTag", char); }
+		else { this.throwError(char, token); }
+		return token;
+	},
+	readStartTagLabel: function (char, token) {
+		if (char.char == "#") { 
+			if (token.content.length) { this.throwError(char, token); }
+			else { token = saveToken(token, "tagLabel", char); }
+		}
+		else if (char.char == "]") { token = startToken(char, "endBaseTag"); }
+		else if (!this.whiteSpace(char)) { this.throwError(char); }
+		return token;
+	},
+	readTagLabel: function (char, token) {
+		if (char.char.match(/[a-zA-Z0-9-_]/)) { token = this.addCharToToken(char, token); }
+		else if (char.char == ".") { 
+			if (token.content.length) {
+				this.saveToken(token, "within");
+				token = this.startToken(char, "tagLabel");
+			}
+			else { this.throwError(char, token); }
+		}
+		else if (this.whiteSpace(char) && token.content) { this.saveToken(token, "endBaseTag"); }
+		else if (char.char == "]") { 
+			this.saveToken(token);
+			token = this.startToken(char, "endBaseTag");
+			token = this.saveToken(token, "baseElement");
+			this.enterContext("baseElement");
+		}
+		return token;
+	},
+	readEndBaseTag: function (char, token) {
+		if (char.char == "]") { 
+			token = this.saveToken(token, "baseElement", char); 
+			this.enterContext("baseElement");
+		}
+		else if (!this.whiteSpace(char)) { this.throwError(char, token); }
+		return token;
+	},
+	readBaseElement: function (char, token) {
+		//action or text
+		if (char.char == "[" && this.viewNextChar(char) == "!") { 
+			token.type = "startAction";
+			token = this.addCharToToken(char, token); 
+			this.enterContext("action");
+		}
+		if (char.char == "<" && this.viewNextChar(char) == "*") { 
+			token.type = "startComment";
+			token = this.addCharToToken(char, token); 
+			this.enterContext("comment");
+		}
+		else if (char.char == "{") { 
+			token.type = "startScript";
+			token = this.saveToken(token, "scriptContent", char);
+			this.enterContext("script");
+		}
+		else if (!this.whiteSpace(char)) { 
+			token = this.startToken(char, "textContent"); 
+			this.enterContext("textContent");
+		}
+		return token;
+	},
+	readStartComment: function (char, token) {
+		if (char.char == "*") { token = this.saveToken(token, "comment", char); }
+		else { this.throwError(char); }
+		return token;
+	},
+	readComment: function (char, token) {
+		if (char.char == "*" && this.viewNextChar(char) == ">") { token = this.startToken(char, "endComment"); }
+		return token;
+	},
+	readEndComment: function (char, token) {
+		if (char.char == ">") { 
+			this.previousContext();
+			token = this.saveToken(token, this.context[context.length - 1], char);
+		}
+	},
 	getTokens: function (source) {
 		let currChar = output.scanner.readChar(source, 0, 0);
 		let currToken = this.blankToken(source);
 		while (currChar && !this.error) {
-			//Starting context (ie not in a comment or base element)
-			if (!currToken.type) {
-				if (currChar.char == "*") { currToken = startToken(currChar, "startBaseTag"); }
-				else if (currChar.char == "<") { currToken = startToken(currChar, "startComment"); }
-				else if (!this.whiteSpace(currChar)) { this.throwError(currChar); }
-			}
-
-			//base tag context
-			else if (currToken.type == "startBaseTag") {
-				if (currChar.char == "[") { currToken = this.saveToken(currToken, "baseTag", currChar); }
-				else { this.throwError(currChar, currToken); }
-			}
-			else if (currToken.type == "baseTag") { 
-				if (currChar.char == "#") {
-					if (currToken.content.length) { 
-						this.saveToken(currToken);
-						currToken = this.startToken(currChar, "startTagLabel");
-						currToken = this.saveToken(currToken, "tagLabel");
-					}
-				}
-				if (this.whiteSpace(currChar)) {
-					if (currToken.content.length) { currToken = this.saveToken(currToken, "startTagLabel"); }
-				}
-				else if (currChar.char.match(/[a-zA-Z0-9-_]/)) { currToken = this.addCharToToken(currChar, currToken); }
-				else if (currChar.char == "]" && currToken.content) { 
-					this.saveToken(currToken);
-					currToken = this.startToken(currChar, "endBaseTag"); 
-				}
-				else { this.throwError(currChar, currToken); }
-			}
-			else if (currToken.type == "startTagLabel") {
-				if (currChar.char == "#") { currToken = saveToken(currToken, "tagLabel", currChar); }
-				else if (currChar.char == "]") { startToken(currChar, "endBaseTag"); }
-				else if (!this.whiteSpace(currChar)) { this.throwError(currChar); }
-			}
-			else if (currToken.type == "tagLabel") {
-				if (currChar.char.match(/[a-zA-Z0-9-_]/)) { currToken = this.addCharToToken(currChar, currToken); }
-				else if (this.whiteSpace(currChar) && currToken.content) { this.saveToken(currToken, "endBaseTag"); }
-				else if (currChar.char == "]") { 
-					this.saveToken(currToken);
-					currToken = this.startToken(currChar, "endBaseTag");
-					currToken = this.saveToken(currToken, "baseElement");
-				}
-			}
-
-			//comment context
-			else if (currToken.type == "startComment") {
-				if (currChar.char == "!") { currToken = this.saveToken(currToken, "comment", currChar); }
-				else { this.throwError(currChar); }
-			}
-			else if (currToken.type == "comment") {  }
-			
+			if (!currToken.type) { currToken = this.readNoContext(currChar, currToken); }
+			else if (currToken.type == "startBaseTag") { currToken = this.readStartBaseTag(currChar, currToken); }
+			else if (currToken.type == "baseTag") { currToken = this.readBaseTag(currChar, currToken); }
+			else if (currToken.type == "startTagLabel") { currToken = this.readStartTagLabel(currChar, currToken); }
+			else if (currToken.type == "tagLabel") { currToken = this.readTagLabel(currChar, currToken); }
+			else if (currToken.type == "endBaseTag") { currToken = this.readEndBaseTag(currChar, currToken); }
+			else if (currToken.type == "baseElement") { currToken = this.readBaseElement(currChar, currToken); }
+			else if (currToken.type == "startComment") { currToken = this.readStartComment(currChar, currToken); }
+			else if (currToken.type == "comment") { currToken = this.readComment(currChar, currToken); }
+			else if (currToken.type == "endComment") { currToken = this.readEndComment(currChar, currToken); }
 
 
 			currChar = output.scanner.readNext(source);
