@@ -48,6 +48,8 @@ output.parser = {
 
 output.parseNarra = function (narra) {
 	let source = narra.match(/[\s\S]*?(\r\n|\r|\n)/g);
+	tokens = this.lexer.getTokens(source);
+	console.log(tokens);
 	//start with no context. Without context, there are only 3 valid things to find:
 	// *[ indicates beginning of "base tag" content
 	// <! indicates start of "comment" context
@@ -141,14 +143,17 @@ output.lexer = {
 	throwError: function (char, token) {
 		this.error = true;
 		let line = char.line;
-		let pos = char.pos;
+		let pos = char.position;
 		if (token && (token.line || token.pos)) {
 			line = token.line;
-			pos = token.pos;
+			pos = token.position;
 		}
 		let errString = char.source[line].slice(pos);
 		let unexpected =  errString.match(/[\S]*(?=[\s])/);
 		console.log("Unexpected token " + unexpected + " with context " + token.type + " at (" + line + ", " + pos + ")");
+		console.log(this.context);
+		console.log(this.tokens);
+
 	},
 	enterContext: function (context) { this.context.push(context); },
 	previousContext: function () { this.context.pop(); },
@@ -158,15 +163,15 @@ output.lexer = {
 		return false;
 	},
 	viewNextChar: function (char) {
-		return output.scanner.readline(char.source, char.line, char.pos + 1);
+		let nextChar =  output.scanner.readChar(char.source, char.line, char.position + 1);
+		return nextChar;
 	},
 	blankToken: function (source, context) {
 		return {
 			content: "",
 			type: (context) ? context : "",
 			line: 0,
-			pos: 0,
-			source: source
+			position: 0,
 		}
 	},
 	startToken: function (char, context) {
@@ -174,8 +179,7 @@ output.lexer = {
 			content: char.char,
 			type: context,
 			line: char.line,
-			pos: char.pos,
-			source: char.source,
+			position: char.position,
 		};
 	},
 	addCharToToken: function (char, token) {
@@ -183,13 +187,13 @@ output.lexer = {
 			content: token.content + char.char,
 			type: token.type,
 			line: (token.content) ? token.line : char.line,
-			pos: (token.content) ? token.pos : char.pos,
-			source: token.source
+			position: (token.content) ? token.position : char.position,
 		}
 	},
 	saveToken: function (token, newContext, char) {
 		if (char) { token.content += char.char; }
 		this.tokens.push(token);
+		console.log(token.content + "  " + token.type);
 		return this.blankToken(token.source, newContext);
 	},
 	readNoContext: function (char, token) {
@@ -219,7 +223,8 @@ output.lexer = {
 		else if (char.char.match(/[a-zA-Z0-9-_]/)) { token = this.addCharToToken(char, token); }
 		else if (char.char == "]" && token.content) { 
 			token = this.saveToken(token, "endBaseTag");
-			token = this.addCharToToken(char, token); 
+			token = this.saveToken(token, "baseElement", char);
+			this.enterContext("baseElement");
 		}
 		else { this.throwError(char, token); }
 		return token;
@@ -232,9 +237,12 @@ output.lexer = {
 	readStartTagLabel: function (char, token) {
 		if (char.char == "#") { 
 			if (token.content.length) { this.throwError(char, token); }
-			else { token = saveToken(token, "tagLabel", char); }
+			else { token = this.saveToken(token, "tagLabel", char); }
 		}
-		else if (char.char == "]") { token = startToken(char, "endBaseTag"); }
+		else if (char.char == "]") { 
+			token.type = "endBaseTag";
+			token = this.saveToken(token, "baseElement"); 
+		}
 		else if (!this.whiteSpace(char)) { this.throwError(char); }
 		return token;
 	},
@@ -279,12 +287,37 @@ output.lexer = {
 		else if (char.char == "{") { 
 			token.type = "startScript";
 			token = this.saveToken(token, "scriptContent", char);
-			this.enterContext("script");
+			this.enterContext("scriptContent");
 		}
 		else if (!this.whiteSpace(char)) { 
 			token = this.startToken(char, "textContent"); 
 			this.enterContext("textContent");
 		}
+		return token;
+	},
+	readStartAction: function (char, token) {
+		if (char.char == "!") { token = this.saveToken(token, "action", char); }
+		else { this.throwError(char); }
+		return token;
+	},
+	readAction: function (char, token) {
+		if (char.char.match(/[a-zA-Z0-9-_]/)) { token = this.addCharToToken(char, token); }
+		else if (char.char == "]" || (token.content.length && this.whiteSpace(char))) {
+			token = this.saveToken(token, "endAction");
+			if (char.char == "]") { 
+				this.previousContext();
+				token = this.saveToken(token, this.context[this.context.length - 1], char); 
+			}
+		}
+		else { this.throwError(char, token); }
+		return token;
+	},
+	readEndAction: function (char, token) {
+		if (char.char == "]") {
+			this.previousContext();
+			token = this.saveToken(token, this.context[this.context.length - 1], char);
+		}
+		else if (!this.whiteSpace(char)) { this.throwError(char, token); }
 		return token;
 	},
 	readStartComment: function (char, token) {
@@ -293,14 +326,75 @@ output.lexer = {
 		return token;
 	},
 	readComment: function (char, token) {
-		if (char.char == "*" && this.viewNextChar(char) == ">") { token = this.startToken(char, "endComment"); }
+		if (char.char == "*" && this.viewNextChar(char).char == ">") { token = this.startToken(char, "endComment"); }
 		return token;
 	},
 	readEndComment: function (char, token) {
 		if (char.char == ">") { 
 			this.previousContext();
-			token = this.saveToken(token, this.context[context.length - 1], char);
+			token = this.saveToken(token, this.context[this.context.length - 1], char);
 		}
+		return token;
+	},
+	readScriptContent: function (char, token) {
+		if (char.char == "}" && this.viewNextChar(char).char == "*") { 
+			token = this.saveToken(token, "endScript");
+			token = this.addCharToToken(char, token);
+		}
+		else { token = this.addCharToToken(char, token); }
+		return token;
+	},
+	readScriptEnd: function (char, token) {
+		if (char.char == "*") { 
+			token = this.saveToken(token, "", char); 
+			this.resetContext();
+		}
+		return token;
+	},
+	readTextContent: function (char, token) {
+		if (char.char == "[" && this.viewNextChar(char).char == "!") { 
+			this.enterContext("action");
+			token = this.saveToken(token, "startAction");
+			token = this.addCharToToken(char, token);
+		}
+		else if (char.char == "*" && this.viewNextChar(char).char == "[") {
+			this.enterContext("baseTag");
+			token = this.saveToken(token, "startBaseTag");
+			token = this.addCharToToken(char, token);
+		}
+		else if (char.char == "<" && this.viewNextChar(char).char == "*") {
+			this.enterContext("comment");
+			token = this.saveToken(token, "startComment");
+			token = this.addCharToToken(char, token);
+		}
+		else if (char.char == "<" && this.viewNextChar(char).char == "!") {
+			this.enterContext("inlineScript");
+			token = this.saveToken(token, "startInlineScript");
+			token = this.addCharToToken(char, token);
+		}
+		else { token = this.addCharToToken(char, token); }
+		return token;
+	},
+	readStartInlineScript: function (char, token) {
+		if (char.char == "!") { token = this.saveToken(token, "inlineScript"); }
+		else { this.throwError(char, token); }
+		return token;
+	},
+	readInlineScript: function (char, token) {
+		if (char.char == "!" && this.viewNextChar(char).char == ">") {
+			token = this.saveToken(token, "endInlineScript");
+			token = this.addCharToToken(char, token);
+		}
+		else { token = this.addCharToToken(char, token); }
+		return token;
+	},
+	readEndInlineScript: function (char, token) {
+		if (char.char == ">") {
+			this.previousContext();
+			token = this.saveToken(token, this.context[this.context.length - 1], char);
+		}
+		else { this.throwError(char, token); }
+		return token;
 	},
 	getTokens: function (source) {
 		let currChar = output.scanner.readChar(source, 0, 0);
@@ -316,11 +410,22 @@ output.lexer = {
 			else if (currToken.type == "startComment") { currToken = this.readStartComment(currChar, currToken); }
 			else if (currToken.type == "comment") { currToken = this.readComment(currChar, currToken); }
 			else if (currToken.type == "endComment") { currToken = this.readEndComment(currChar, currToken); }
-
+			else if (currToken.type == "scriptContent") { currToken = this.readScriptContent(currChar, currToken); }
+			else if (currToken.type == "endScript") { currToken = this.readScriptEnd(currChar, currToken); }
+			else if (currToken.type == "startAction") { currToken = this.readStartAction(currChar, currToken); }
+			else if (currToken.type == "action") { currToken = this.readAction(currChar, currToken); }
+			else if (currToken.type == "endAction") { currToken = this.readEndAction(currChar, currToken); }
+			else if (currToken.type == "textContent") { currToken = this.readTextContent(currChar, currToken); }
+			else if (currToken.type == "startInlineScript") { currToken = this.readStartInlineScript(currChar, currToken); }
+			else if (currToken.type == "inlineScript") { currToken = this.readInlineScript(currChar, currToken); }
+			else if (currToken.type == "endInlineScript") { currToken = this.readEndInlineScript(currChar, currToken); }
+			//add transition from baseTagContent to action
+			//include "action paramenter" in lexicon
 
 			currChar = output.scanner.readNext(source);
+			//console.log(currChar.char + " (" + currChar.line + "," + currChar.position + ")");
 		}
-		return tokens;
+		return this.tokens;
 	}
 }
 
