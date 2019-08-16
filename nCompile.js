@@ -33,7 +33,6 @@ output.parseNarra = function (narra) {
 	let source = narra.match(/[\s\S]*?(\r\n|\r|\n)/g);
 	let tags = this.getBaseTags(source);
 	this.parseElements(tags, source);
-
 	//let scenes = narra.match(/(\*\[scene[\s\S]*?)(?=\*\[(scene|end))/gi);
 	// this.parseScenes(scenes);
 	//this.frame.meta = this.getMeta(source);
@@ -108,9 +107,9 @@ output.getBaseTags = function (source) {
 	return tags;
 
 	function isContentTag(tagType) {
-		if (tagType.match(/(scene|script|choice)/)) return true;
-		else if (tagType.match(/(meta|init|text)/)) return true;
-		else return false;
+		if (tagType == "script" || tagType == "scene" || tagType == "choice") return true;
+		else if (tagType == "meta" || tagType == "text" || tagType == "init") return true;
+		return false;
 	}
 }
 
@@ -121,32 +120,57 @@ output.getFile = function (path) {
 	})
 }
 
-output.getMeta = function (source) {
+output.getMeta = function (tag, source) {
+	console.log("getting meta");
 
-	// let metaRaw = fileStr.match(/\*\[meta\][\S\s]*?\}[\*]/i)[0];
-	// metaRaw = metaRaw.match(/\{[\s\S]*\}/)[0];
-	// let metaClean = metaRaw.replace(/\r|\n|\t/g, "");
-	// let meta = metaClean.replace(/([a-zA-Z0-9-]+)[\s]*:/g, '"$1":');
-	// return JSON.parse(meta);
 }
 
-output.parseScenes = function (scenes) {
-	for (let scene of scenes) {
-		let sceneName = this.getTagName(scene, "scene", this.sceneNum);
-		this.sceneNum++;
-		scene += "*[";
-		let elements = this.parseElements(scene.match(/\*\[[\s\S]*?(?=\*\[)/gi));
-		
-	}
-	
+output.startScene = function (tag, source) {
+	console.log("starting scene");
+	return tag.label;
 }
 
 output.parseElements = function (tags, source) {
-	let scene = {};
+	let scene;
+	let noSceneMsg = " because it is not within a valid scene!";
 	for (let tag of tags) {
 		//if content tag, save appropriate content to scaffold
+		if (tag.type) {
+			switch (tag.type) {
+				case "meta": 
+					this.getMeta(tag, source);
+					break;
+				case "init": 
+					this.getInit(tag, source);
+					break;
+				case "scene": 
+					scene = this.startScene(tag, source);
+					break;
+				case "text":
+					if (scene) this.saveText(tag, source);
+					else skipMsg(tag, noSceneMsg);
+					break;
+				case "choice":
+					if (scene) this.saveChoice(tag, source);
+					else skipMsg(tag, noSceneMsg);
+					break;
+				case "script":
+					if (scene) this.saveScript(tag, source);
+					else skipMsg(tag, noSceneMsg);
+					break;
+				default: 
+					skipMsg(tag, " because it is not a valid content tag!");
+			}
+		}
+		else if (tag.link) {
+			
+		}
 		//if scene tag, start new scene
 		//else save 
+	}
+
+	function skipMsg(tag, reason) {
+		console.log("Skipping " + tag.type + " at " + tag.startPos.line + "," + tag.startPos.pos + reason);
 	}
 
 }
@@ -164,34 +188,30 @@ output.getElementType = function (element) {
 	return type[1].toLowerCase();
 }
 
-output.getElementContent = function (element, type) {
-	if (type == "choice") {
-		let options = {}
-		let subElements = element.match(/(?<!\*)\[option[\s\S]*?(?=\[|\*)/gi);
-		for (let sub of subElements) {
-
-		}
-	}
-}
-
 output.isBaseElement = function (type) {
 	if (type == "text" || type == "choice") { return true; }
 	else { return false; }
 }
 
-output.saveScript = function (script, index) {
-	let scriptName = script.match(/\#([a-zA-Z0-9-]*)/)[1];
-	if (!scriptName) { scriptName = "script" + index; }
-	scriptRaw = script.match(/\{([\s\S]*)\}/)[1];
-	this.frame.scripts.refList.push(scriptName);
-	this.frame.scripts[scriptName] = new Function("", scriptRaw.replace(/\r|\n|\t/g, ""));
+output.saveText = function (tag, source) {
+	console.log("saving text");
 }
 
-output.getInit = function (fileStr) {
-	let initRaw = fileStr.match(/\*\[init\][\S\s]*?\}[\*]/i)[0];
-	initRaw = initRaw.match(/\{([\s\S]*)\}/)[1];
-	let initClean = initRaw.replace(/\r|\n|\t/g, "");
-	return new Function("", initClean);
+output.saveChoice = function (tag, source) {
+	console.log("saving choice");
+}
+
+output.saveScript = function (script, index) {
+	console.log("saving script");
+	// let scriptName = script.match(/\#([a-zA-Z0-9-]*)/)[1];
+	// if (!scriptName) { scriptName = "script" + index; }
+	// scriptRaw = script.match(/\{([\s\S]*)\}/)[1];
+	// this.frame.scripts.refList.push(scriptName);
+	// this.frame.scripts[scriptName] = new Function("", scriptRaw.replace(/\r|\n|\t/g, ""));
+}
+
+output.getInit = function (tag, source) {
+	console.log("getting Init");
 }
 
 output.getFile(filePath);
