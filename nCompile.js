@@ -23,7 +23,9 @@ else {
 	rl.close;
 }
 
-let output = {
+let output = {};
+
+output.scaffold = {
 	sceneCount: 0,
 	scenes: []
 }
@@ -33,6 +35,7 @@ output.parseNarra = function (narra) {
 	let source = narra.match(/[\s\S]*?(\r\n|\r|\n)/g);
 	let tags = this.getBaseTags(source);
 	this.parseElements(tags, source);
+	console.log(this.scaffold);
 	//let scenes = narra.match(/(\*\[scene[\s\S]*?)(?=\*\[(scene|end))/gi);
 	// this.parseScenes(scenes);
 	//this.frame.meta = this.getMeta(source);
@@ -120,13 +123,28 @@ output.getFile = function (path) {
 	})
 }
 
-output.getMeta = function (tag, source) {
-	console.log("getting meta");
+output.getTagContent = function (tag, source) {
+	scanner.position = tag.endPos;
+	let currChar = scanner.readChar(source, tag.endPos);
+	let content = "";
+	while (currChar) {
+		content += currChar.char;
+		currChar = scanner.readNext(source);
+		if (currChar.char == "*" && scanner.lookAheadRead(source, 1, currChar.position) == "[") currChar = null;
+	}
+	return content;
+}
 
+output.getMeta = function (tag, source) {
+	let metaRaw = this.getTagContent(tag, source);
+	let metaContent = metaRaw.match(/{[\s\S]*}?(?=\*)/)[0];
+	metaContent = metaContent.replace(/['"]?([a-zA-Z0-9-_]+)['"]?\s*(?=:)/g, "\"$1\"");
+	metaContent = metaContent.replace(/(?<=:)\s*['"]?([\s\S]+?)['"]?\s*(?=,|(\s*}))/g, "\"$1\"");
+	this.scaffold.meta = JSON.parse(metaContent);
 }
 
 output.startScene = function (tag, source) {
-	console.log("starting scene");
+	console.log("starting scene @ " + tag.startPos.line + ", " + tag.startPos.pos);
 	return tag.label;
 }
 
@@ -138,10 +156,14 @@ output.parseElements = function (tags, source) {
 		if (tag.type) {
 			switch (tag.type) {
 				case "meta": 
-					this.getMeta(tag, source);
+					if (scene) skipMsg(tag, " Meta tag cannot be used inside a scene!");
+					else if (this.meta) skipMsg(tag, " Only one meta tag allowed!");
+					else this.getMeta(tag, source);
 					break;
 				case "init": 
-					this.getInit(tag, source);
+					if (scene) skipMsg(tag, " Init tag cannot be used inside a scene!");
+					else if (this.init) skipMsg(tag, " Only one init function allowed!");
+					else this.getInit(tag, source);
 					break;
 				case "scene": 
 					scene = this.startScene(tag, source);
@@ -165,8 +187,6 @@ output.parseElements = function (tags, source) {
 		else if (tag.link) {
 			
 		}
-		//if scene tag, start new scene
-		//else save 
 	}
 
 	function skipMsg(tag, reason) {
@@ -194,11 +214,11 @@ output.isBaseElement = function (type) {
 }
 
 output.saveText = function (tag, source) {
-	console.log("saving text");
+	console.log("saving text @ " + tag.startPos.line + ", " + tag.startPos.pos);
 }
 
 output.saveChoice = function (tag, source) {
-	console.log("saving choice");
+	console.log("saving choice @ " + tag.startPos.line + ", " + tag.startPos.pos);
 }
 
 output.saveScript = function (script, index) {
@@ -211,7 +231,7 @@ output.saveScript = function (script, index) {
 }
 
 output.getInit = function (tag, source) {
-	console.log("getting Init");
+	console.log("getting init @ " + tag.startPos.line + ", " + tag.startPos.pos);
 }
 
 output.getFile(filePath);
