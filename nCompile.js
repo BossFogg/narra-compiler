@@ -150,8 +150,8 @@ output.startScene = function (tag, source) {
 	this.scaffold.sceneCount++;
 	let sceneTitle = this.getTagContent(tag, source);
 	sceneTitle = sceneTitle.replace(/<![\s\S]*!>/g, "");
-	sceneTitle = sceneTitle.replace(/[\s]*/, "");
 	sceneTitle = sceneTitle.replace(/[\s]*([\s\S]*\S)[\s]*/, "$1");
+	sceneTitle = sceneTitle.replace(/[\s]*/, "");
 	tag.title = sceneTitle;
 	tag.flow = [];
 	tag.content = this.scaffold.content;
