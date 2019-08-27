@@ -29,7 +29,10 @@ output.scaffold = {
 	sceneCount: 0,
 	contentCount: 0,
 	scenes: {},
-	content: {}
+	content: {
+		next: "",
+		tagList: []
+	}
 }
 
 
@@ -233,14 +236,13 @@ output.isBaseElement = function (type) {
 
 output.saveText = function (tag, scene, source) {
 	if (!tag.label) tag.label = "text" + this.scaffold.contentCount;
-	tag.contentIndex = this.scaffold.contentCount;
 	tag.flowIndex = scene.flow.length;
 	this.scaffold.contentCount++;
 	let textContent = this.getTagContent(tag, source);
 	textContent = this.sanitize(textContent);
-	tag.text = textContent;
 	scene.flow.push(tag.label);
-	this.scaffold.content[tag.label] = tag;
+	this.scaffold.content.tagList = tag;
+	this.scaffold.content[tag.label] = textContent;
 }
 
 output.saveChoice = function (tag, source) {

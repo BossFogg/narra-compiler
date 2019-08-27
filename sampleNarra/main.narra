@@ -45,7 +45,7 @@
 
 *[choice #door-options]
 	[>option listen-door] Listen
-	[>(frame.data.seenMarkings) option wait-door] Wait
+	[>(frame.data.seenMarkings) ? option wait-door] Wait
 	[>option knock-door] Knock on door
 	[>option cell-options] Go back
 
@@ -70,7 +70,7 @@
 *[script #knock-script] {
 	frame.data.knockPattern.push("knock");
 	if (frame.data.knockPattern.length > 10) { frame.data.knockPattern.shift(); }
-	if (JSON.stringify(knockPattern) == JSON.stringify(knockRef)) { frame.nextElement = "strange-noise" }
+	if (JSON.stringify(knockPattern) == JSON.stringify(knockRef)) { this.next = "strange-noise" }
 }*
 
 *[door-options]
