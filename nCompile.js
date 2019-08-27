@@ -144,7 +144,7 @@ output.getMeta = function (tag, source) {
 }
 
 output.startScene = function (tag, source) {
-	console.log("starting scene @ " + tag.startPos.line + ", " + tag.startPos.pos);
+	console.log(tag);
 	return tag.label;
 }
 
