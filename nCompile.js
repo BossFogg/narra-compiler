@@ -247,14 +247,14 @@ output.saveChoice = function (tag, source) {
 	console.log("saving choice @ " + tag.startPos.line + ", " + tag.startPos.pos);
 }
 
-output.saveScript = function (script, scene, index) {
+output.saveScript = function (tag, scene, source) {
 	if (!tag.label) tag.label = "script" + this.scaffold.contentCount;
 	tag.contentIndex = this.scaffold.contentCount;
 	tag.flowIndex = scene.flow.length;
 	this.scaffold.contentCount++;
 	let scriptRaw = this.getTagContent(tag, source);
-	let scriptMatch = scriptRaw.match(/{[\s\S]*?}(?=\*)/)[0];
-	let scriptContent = {};
+	let scriptMatch = scriptRaw.match(/{[\s\S]*?}(?=\*)/);
+	let scriptContent = "{}";
 	if (scriptMatch) scriptContent = scriptMatch[0];
 	tag.script = new Function (scriptContent);
 	scene.flow.push(tag.label);
@@ -263,8 +263,8 @@ output.saveScript = function (script, scene, index) {
 
 output.getInit = function (tag, source) {
 	let initRaw = this.getTagContent(tag, source);
-	let initMatch = initRaw.match(/{[\s\S]*?}(?=\*)/)[0];
-	let initContent = {};
+	let initMatch = initRaw.match(/{[\s\S]*?}(?=\*)/);
+	let initContent = "{}";
 	if (initMatch) initContent = initMatch[0];
 	this.scaffold.init = new Function (initContent);
 }
