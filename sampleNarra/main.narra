@@ -6,24 +6,22 @@
 }*
 
 *[init] {
-	frame.data.triedDoor = false;
-	frame.data.callout = "Anybody There?!";
-	frame.data.knockPattern = [];
-	frame.data.knockPatternRef = ["knock", "wait", "knock", "wait", "knock", "knock", "knock", "wait", "knock", "knock"];
+	this.content.triedDoor = false;
+	this.content.callout = "Anybody There?!";
+	this.content.knockPattern = [];
+	this.content.knockPatternRef = ["knock", "wait", "knock", "wait", "knock", "knock", "knock", "wait", "knock", "knock"];
 }*
 
 <* This is a sample story for testing the Narra Compiler *>
 
-*[scene #start] The Beginning... <! this will appear as the scene title!>
+*[scene #start] The Beginning... <* this will appear as the scene title*>
 
 *[text] 
-	You awake to find yourself in an unfamiliar room with no memory of how you got there or why. The walls are dull grey. Concrete. And so are the floors for that matter. You can feel a musty dampness in the air that smells old and slightly rotten.
+	You awake to find yourself in an unfamiliar room with no memory of how you got there or why. The walls are dull grey. Concrete. And so are the floors, for that matter. You can feel a musty dampness in the air that smells old and slightly rotten.
 
-*[choice]
-	[>option] Get up...
+	[>continue]
 
-*[text]
-	You peel yourself off the hard, cold floor and feel your muscles groan in protest. Who knows how long you spent down there. Looking down, you can see that you are dressed in light blue jumpsuit and thick, dirty socks but no shoes. The jump suit has a company logo on it with stylized text that reads "Leicher Robotics". The name is recognizable to you but you can't seem to recall anything about it.
+	You peel yourself off the hard, cold floor and feel your muscles groan in protest. Looking down, you can see that you are dressed in light blue jumpsuit and thick, dirty socks but no shoes. The jump suit has a company logo on it with stylized text that reads "Leicher Robotics". The name is recognizable to you but you can't seem to recall anything about it.
 
 	[>continue]
 
@@ -45,7 +43,7 @@
 
 *[choice #door-options]
 	[>option listen-door] Listen
-	[>(frame.data.seenMarkings) ? option wait-door] Wait
+	[>(this.seenMarkings) ? option wait-door] Wait
 	[>option knock-door] Knock on door
 	[>option cell-options] Go back
 
@@ -53,14 +51,16 @@
 	You pause and wait for a moment.
 
 *[script #wait-script] {
-	frame.data.knockPattern.push("wait");
-	if (frame.data.knockPattern.length > 10) { frame.data.knockPattern.shift(); }
+	this.knockPattern.push("wait");
+	if (this.knockPattern.length > 10) { this.knockPattern.shift(); }
 }*
 
 *[door-options]
 
 *[text #listen-door]
-	<! (frame.data.seenMarkings) ? "You Wait for a moment with your ear to the door." : "You put your ear to the door and listen, but hear nothing." !>
+	<! (this.seenMarkings) ? "You Wait for a moment with your ear to the door." : "You put your ear to the door and listen, but hear nothing." !>
+
+*[wait-script]
 
 *[door-options]
 
@@ -68,9 +68,9 @@
 	You rap your knuckles once on the door, generating a metalic thud.
 
 *[script #knock-script] {
-	frame.data.knockPattern.push("knock");
-	if (frame.data.knockPattern.length > 10) { frame.data.knockPattern.shift(); }
-	if (JSON.stringify(knockPattern) == JSON.stringify(knockRef)) { this.next = "strange-noise" }
+	this.knockPattern.push("knock");
+	if (this.knockPattern.length > 10) { this.knockPattern.shift(); }
+	if (JSON.stringify(this.knockPattern) == JSON.stringify(this.knockRef)) { this.next = "strange-noise" }
 }*
 
 *[door-options]
@@ -95,7 +95,7 @@
 *[cell-options]
 
 *[text call-out]
-	"<! frame.data.callout !>" You call out for help at the top of your lungs. 
+	"<! this.callout !>" You call out for help at the top of your lungs. 
 
 	Only the echo of your own voice comes back to meet you.
 

@@ -23,18 +23,17 @@ else {
 	rl.close;
 }
 
-let output = {};
-
-output.scaffold = {
+let output = {
 	sceneCount: 0,
 	contentCount: 0,
-	scenes: {},
-	content: {
-		next: "",
-		tagList: []
+	scaffold: {
+		scenes: {},
+		content: {
+			next: "",
+			tagList: []
+		}
 	}
-}
-
+};
 
 output.parseNarra = function (narra) {
 	let source = narra.match(/[\s\S]*?(\r\n|\r|\n)/g);
@@ -149,9 +148,9 @@ output.getMeta = function (tag, source) {
 }
 
 output.startScene = function (tag, source) {
-	if (!tag.label) tag.label = "scene" + this.scaffold.sceneCount;
-	tag.sceneIndex = this.scaffold.sceneCount;
-	this.scaffold.sceneCount++;
+	if (!tag.label) tag.label = "scene" + this.sceneCount;
+	tag.sceneIndex = this.sceneCount;
+	this.sceneCount++;
 	let sceneTitle = this.getTagContent(tag, source);
 	sceneTitle = this.sanitize(sceneTitle);
 	tag.title = sceneTitle;
@@ -162,7 +161,7 @@ output.startScene = function (tag, source) {
 }
 
 output.sanitize = function (contentStr) {
-	let content = contentStr.replace(/<![\s\S]*!>/g, "");
+	let content = contentStr.replace(/<\*[\s\S]*\*>/g, "");
 	content = content.replace(/[\s]*(\S[\s\S]*\S)[\s]*/, "$1");
 	content = content.replace(/^[\t]*/gm, "");
 	content = content.replace(/[\s]*/, "");
@@ -235,32 +234,55 @@ output.isBaseElement = function (type) {
 }
 
 output.saveText = function (tag, scene, source) {
-	if (!tag.label) tag.label = "text" + this.scaffold.contentCount;
+	if (!tag.label) tag.label = "text" + this.contentCount;
 	tag.flowIndex = scene.flow.length;
-	this.scaffold.contentCount++;
+	this.contentCount++;
 	let textContent = this.getTagContent(tag, source);
 	textContent = this.sanitize(textContent);
 	scene.flow.push(tag.label);
-	this.scaffold.content.tagList = tag;
+	this.scaffold.content.tagList.push(tag);
 	this.scaffold.content[tag.label] = textContent;
 }
 
-output.saveChoice = function (tag, source) {
-	console.log("saving choice @ " + tag.startPos.line + ", " + tag.startPos.pos);
+output.saveChoice = function (tag, scene, source) {
+	if (!tag.label) tag.label = "choice" + this.contentCount;
+	tag.flowIndex = scene.flow.length;
+	this.contentCount++;
+	let choiceRaw = this.getTagContent(tag, source);
+	choiceContent = this.sanitize(choiceRaw);
+	let options = this.getOptions(choiceContent);
+	console.log(options);
+}
+
+output.getOptions = function (choiceStr) {
+	choiceStr += "[";
+	let choiceMatch = choiceStr.match(/\[>[\s\S]*?(?=\[)/g);
+	let options = [];
+	for (let option of choiceMatch) {
+		options.push(this.parseOption(option))
+	}
+	return options;
+}
+
+output.parseOption = function (optStr) {
+	let option = {};
+	for (let i = 0; i < optionStr.length; i++) {
+		//read over string
+	}
+	return optStr;
 }
 
 output.saveScript = function (tag, scene, source) {
-	if (!tag.label) tag.label = "script" + this.scaffold.contentCount;
-	tag.contentIndex = this.scaffold.contentCount;
+	if (!tag.label) tag.label = "script" + this.contentCount;
 	tag.flowIndex = scene.flow.length;
-	this.scaffold.contentCount++;
+	this.contentCount++;
 	let scriptRaw = this.getTagContent(tag, source);
 	let scriptMatch = scriptRaw.match(/{[\s\S]*?}(?=\*)/);
 	let scriptContent = "{}";
 	if (scriptMatch) scriptContent = scriptMatch[0];
-	tag.script = new Function (scriptContent);
 	scene.flow.push(tag.label);
-	this.scaffold.content[tag.label] = tag;
+	this.scaffold.content.tagList.push(tag);
+	this.scaffold.content[tag.label] = new Function (scriptContent);
 }
 
 output.getInit = function (tag, source) {
@@ -272,3 +294,5 @@ output.getInit = function (tag, source) {
 }
 
 output.getFile(filePath);
+
+module.exports = output;
