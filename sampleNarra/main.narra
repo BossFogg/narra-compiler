@@ -14,7 +14,7 @@
 
 <* This is a sample story for testing the Narra Compiler *>
 
-*[scene #start] The Beginning...
+*[scene #start] The Beginning... <! this will appear as the scene title!>
 
 *[text] 
 	You awake to find yourself in an unfamiliar room with no memory of how you got there or why. The walls are dull grey. Concrete. And so are the floors for that matter. You can feel a musty dampness in the air that smells old and slightly rotten.

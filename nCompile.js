@@ -27,7 +27,8 @@ let output = {};
 
 output.scaffold = {
 	sceneCount: 0,
-	scenes: []
+	scenes: {},
+	content: {}
 }
 
 
@@ -130,7 +131,7 @@ output.getTagContent = function (tag, source) {
 	while (currChar) {
 		content += currChar.char;
 		currChar = scanner.readNext(source);
-		if (currChar.char == "*" && scanner.lookAheadRead(source, 1, currChar.position) == "[") currChar = null;
+		if (currChar && currChar.char == "*" && scanner.lookAheadRead(source, 1, currChar.position) == "[") currChar = null;
 	}
 	return content;
 }
@@ -144,7 +145,17 @@ output.getMeta = function (tag, source) {
 }
 
 output.startScene = function (tag, source) {
-	console.log(tag);
+	if (!tag.label) tag.label = "scene" + this.scaffold.sceneCount;
+	tag.sceneIndex = this.scaffold.sceneCount;
+	this.scaffold.sceneCount++;
+	let sceneTitle = this.getTagContent(tag, source);
+	sceneTitle = sceneTitle.replace(/<![\s\S]*!>/g, "");
+	sceneTitle = sceneTitle.replace(/[\s]*/, "");
+	sceneTitle = sceneTitle.replace(/[\s]*([\s\S]*\S)[\s]*/, "$1");
+	tag.title = sceneTitle;
+	tag.flow = [];
+	tag.content = this.scaffold.content;
+	this.scaffold.scenes[tag.label] = tag;
 	return tag.label;
 }
 
