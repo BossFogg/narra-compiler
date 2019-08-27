@@ -27,6 +27,7 @@ let output = {};
 
 output.scaffold = {
 	sceneCount: 0,
+	contentCount: 0,
 	scenes: {},
 	content: {}
 }
@@ -149,14 +150,20 @@ output.startScene = function (tag, source) {
 	tag.sceneIndex = this.scaffold.sceneCount;
 	this.scaffold.sceneCount++;
 	let sceneTitle = this.getTagContent(tag, source);
-	sceneTitle = sceneTitle.replace(/<![\s\S]*!>/g, "");
-	sceneTitle = sceneTitle.replace(/[\s]*([\s\S]*\S)[\s]*/, "$1");
-	sceneTitle = sceneTitle.replace(/[\s]*/, "");
+	sceneTitle = this.sanitize(sceneTitle);
 	tag.title = sceneTitle;
 	tag.flow = [];
 	tag.content = this.scaffold.content;
 	this.scaffold.scenes[tag.label] = tag;
-	return tag.label;
+	return tag;
+}
+
+output.sanitize = function (contentStr) {
+	let content = contentStr.replace(/<![\s\S]*!>/g, "");
+	content = content.replace(/[\s]*(\S[\s\S]*\S)[\s]*/, "$1");
+	content = content.replace(/^[\t]*/gm, "");
+	content = content.replace(/[\s]*/, "");
+	return content;
 }
 
 output.parseElements = function (tags, source) {
@@ -180,15 +187,15 @@ output.parseElements = function (tags, source) {
 					scene = this.startScene(tag, source);
 					break;
 				case "text":
-					if (scene) this.saveText(tag, source);
+					if (scene) this.saveText(tag, scene, source);
 					else skipMsg(tag, noSceneMsg);
 					break;
 				case "choice":
-					if (scene) this.saveChoice(tag, source);
+					if (scene) this.saveChoice(tag, scene, source);
 					else skipMsg(tag, noSceneMsg);
 					break;
 				case "script":
-					if (scene) this.saveScript(tag, source);
+					if (scene) this.saveScript(tag, scene, source);
 					else skipMsg(tag, noSceneMsg);
 					break;
 				default: 
@@ -224,8 +231,16 @@ output.isBaseElement = function (type) {
 	else { return false; }
 }
 
-output.saveText = function (tag, source) {
-	console.log("saving text @ " + tag.startPos.line + ", " + tag.startPos.pos);
+output.saveText = function (tag, scene, source) {
+	if (!tag.label) tag.label = "text" + this.scaffold.contentCount;
+	tag.contentIndex = this.scaffold.contentCount;
+	tag.flowIndex = scene.flow.length;
+	this.scaffold.contentCount++;
+	let textContent = this.getTagContent(tag, source);
+	textContent = this.sanitize(textContent);
+	tag.text = textContent;
+	scene.flow.push(tag.label);
+	this.scaffold.content[tag.label] = tag;
 }
 
 output.saveChoice = function (tag, source) {
@@ -234,11 +249,6 @@ output.saveChoice = function (tag, source) {
 
 output.saveScript = function (script, index) {
 	console.log("saving script");
-	// let scriptName = script.match(/\#([a-zA-Z0-9-]*)/)[1];
-	// if (!scriptName) { scriptName = "script" + index; }
-	// scriptRaw = script.match(/\{([\s\S]*)\}/)[1];
-	// this.frame.scripts.refList.push(scriptName);
-	// this.frame.scripts[scriptName] = new Function("", scriptRaw.replace(/\r|\n|\t/g, ""));
 }
 
 output.getInit = function (tag, source) {
