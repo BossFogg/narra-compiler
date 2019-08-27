@@ -231,7 +231,9 @@ output.saveScript = function (script, index) {
 }
 
 output.getInit = function (tag, source) {
-	console.log("getting init @ " + tag.startPos.line + ", " + tag.startPos.pos);
+	let initRaw = this.getTagContent(tag, source);
+	let initContent = initRaw.match(/{[\s\S]*?}(?=\*)/)[0];
+	this.scaffold.init = new Function (initContent);
 }
 
 output.getFile(filePath);
