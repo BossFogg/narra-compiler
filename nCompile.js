@@ -26,6 +26,7 @@ else {
 let output = {
 	sceneCount: 0,
 	contentCount: 0,
+	scanner: scanner,
 	scaffold: {
 		scenes: {},
 		content: {
@@ -39,7 +40,7 @@ output.parseNarra = function (narra) {
 	let source = narra.match(/[\s\S]*?(\r\n|\r|\n)/g);
 	let tags = this.getBaseTags(source);
 	this.parseElements(tags, source);
-	console.log(this.scaffold);
+	//console.log(this.scaffold);
 	//let scenes = narra.match(/(\*\[scene[\s\S]*?)(?=\*\[(scene|end))/gi);
 	// this.parseScenes(scenes);
 	//this.frame.meta = this.getMeta(source);
@@ -49,7 +50,7 @@ output.parseNarra = function (narra) {
 }
 
 output.getBaseTags = function (source) {
-	let currChar = scanner.readChar(source, {line: 0, pos: 0});
+	let currChar = this.scanner.readChar(source, {line: 0, pos: 0});
 	let tags = [];
 	let error = "";
 	let currTag = null;
@@ -57,7 +58,7 @@ output.getBaseTags = function (source) {
 	while (currChar && !error) {
 		if (currTag) {
 			currTag.tag += currChar.char;
-			if (currChar.char == "*" && scanner.lookAheadRead(source, 1, currChar.position) == "[") { 
+			if (currChar.char == "*" && this.scanner.lookAheadRead(source, 1, currChar.position) == "[") { 
 				error = "unexpected token *[ at line " + currChar.position.line + "," + currChar.position.pos;
 			}
 			else if (currChar.char == "#") {
@@ -92,7 +93,7 @@ output.getBaseTags = function (source) {
 				}
 			}
 		}
-		else if (currChar.char == "*" && scanner.lookAheadRead(source, 1, currChar.position) == "[") {
+		else if (currChar.char == "*" && this.scanner.lookAheadRead(source, 1, currChar.position) == "[") {
 			currTag = {
 				startPos: currChar.position,
 				endPos: {},
@@ -104,7 +105,7 @@ output.getBaseTags = function (source) {
 			context = "link";
 		}
 		//if (currTag) console.log(currTag);
-		currChar = scanner.readNext(source);
+		currChar = this.scanner.readNext(source);
 	}
 	if (error) {
 		console.log(error);
@@ -128,13 +129,13 @@ output.getFile = function (path) {
 }
 
 output.getTagContent = function (tag, source) {
-	scanner.position = tag.endPos;
-	let currChar = scanner.readChar(source, tag.endPos);
+	this.scanner.position = tag.endPos;
+	let currChar = this.scanner.readChar(source, tag.endPos);
 	let content = "";
 	while (currChar) {
 		content += currChar.char;
-		currChar = scanner.readNext(source);
-		if (currChar && currChar.char == "*" && scanner.lookAheadRead(source, 1, currChar.position) == "[") currChar = null;
+		currChar = this.scanner.readNext(source);
+		if (currChar && currChar.char == "*" && this.scanner.lookAheadRead(source, 1, currChar.position) == "[") currChar = null;
 	}
 	return content;
 }
@@ -251,7 +252,7 @@ output.saveChoice = function (tag, scene, source) {
 	let choiceRaw = this.getTagContent(tag, source);
 	choiceContent = this.sanitize(choiceRaw);
 	let options = this.getOptions(choiceContent);
-	console.log(options);
+	//console.log(options);
 }
 
 output.getOptions = function (choiceStr) {
@@ -265,11 +266,46 @@ output.getOptions = function (choiceStr) {
 }
 
 output.parseOption = function (optStr) {
-	let option = {};
-	for (let i = 0; i < optionStr.length; i++) {
-		//read over string
-	}
+	let option = {
+		tag: optStr.match(/(?<=\[>\s*)\S[\s\S]*\S(?=\s*<\])/)[0],
+		text: optStr.match(/(?<=\<]\s*)\S[\s\S]*/)[0]
+	};
+	let tokens = this.tokenizeAction(option.tag);
+	console.log(tokens);
+
+	//run through token list and piece together what needs to happen
+
 	return optStr;
+}
+
+output.tokenizeAction = function (actStr) {
+	let tokens = [];
+	let parenthesis = 0;
+	let currToken = {
+		token: "",
+		type: ""
+	};
+	for (let i = 0; i < actStr.length; i++) {
+		//(expression) OPTIONAL
+		if (!currToken.type) {
+			if (actStr[i] == "(") currToken.type = "expression";
+			else if (!actStr[i].match(/\s/)) currToken.type = "actionParam";
+		}
+		else if (actStr[i].match(/\s/) && !parenthesis) {
+			tokens.push(currToken);
+			currToken = {
+				token: "",
+				type: ""
+			}
+		}
+		if (currToken.type == "expression") {
+			if (actStr[i] == "(") parenthesis++;
+			else if (actStr[i] == ")") parenthesis --;
+		}
+		if (currToken.type) currToken.token += actStr[i];
+	}
+	tokens.push(currToken);
+	return tokens;
 }
 
 output.saveScript = function (tag, scene, source) {

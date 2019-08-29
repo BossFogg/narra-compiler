@@ -7,6 +7,7 @@
 
 *[init] {
 	this.content.triedDoor = false;
+	this.content.usedBuckets = false;
 	this.content.callout = "Anybody There?!";
 	this.content.knockPattern = [];
 	this.content.knockPatternRef = ["knock", "wait", "knock", "wait", "knock", "knock", "knock", "wait", "knock", "knock"];
@@ -19,11 +20,11 @@
 *[text] 
 	You awake to find yourself in an unfamiliar room with no memory of how you got there or why. The walls are dull grey. Concrete. And so are the floors, for that matter. You can feel a musty dampness in the air that smells old and slightly rotten.
 
-	[>continue]
+	[>continue<]
 
 	You peel yourself off the hard, cold floor and feel your muscles groan in protest. Looking down, you can see that you are dressed in light blue jumpsuit and thick, dirty socks but no shoes. The jump suit has a company logo on it with stylized text that reads "Leicher Robotics". The name is recognizable to you but you can't seem to recall anything about it.
 
-	[>continue]
+	[>continue<]
 
 	The fog of sleepiness is beginning to clear and you make a slow, 180-degree turn, examining the room as you do so.
 
@@ -32,20 +33,20 @@
 	You are now quite certain this is a prison cell...
 
 *[choice #cell-options]
-	[>option try-door] Try the door
-	[>option look-drain] Examine the drain
-	[>option read-markings] Examine the markings
-	[>option look-buckets] Examine the buckets
-	[>option call-out] Call for help
+	[>option try-door<] Try the door
+	[>option look-drain<] Examine the drain
+	[>option read-markings<] Examine the markings
+	[>option look-buckets<] Examine the buckets
+	[>option call-out<] Call for help
 
 *[text #try-door]
 	Like any good prison door, this one is locked tight with hinges on the outside. It's also solid steel and windowless for good measure. You won't be forcing that open.
 
 *[choice #door-options]
-	[>option listen-door] Listen
-	[>(this.seenMarkings) ? option wait-door] Wait
-	[>option knock-door] Knock on door
-	[>option cell-options] Go back
+	[>option listen-door<] Listen
+	[>if (this.seenMarkings) option wait-door<] Wait
+	[>option knock-door<] Knock on door
+	[>option cell-options<] Go back
 
 *[text #wait-door]
 	You pause and wait for a moment.
@@ -89,27 +90,39 @@
 
 *[cell-options]
 
-*[text look-buckets]
+*[text #look-buckets]
 	The buckets are empty. Presumably, you are meant to fill them when the need strikes.
 
-*[cell-options]
+*[choice #buckets-choice]
+	[>option if (this.content.usedBuckets) no-need else use-buckets<] Use the buckets...
+	[>option cell-options<] Go Back
 
-*[text call-out]
+*[text #no-need]
+	You don't need to use the buckets right now.
+
+*[buckets-choice]
+
+*[text #use-buckets]
+	You relieve yourself and feel just a little bit better... That is until you realize there is nowhere to wash your hands.
+
+*[buckets-choice]
+
+*[text #call-out]
 	"<! this.callout !>" You call out for help at the top of your lungs. 
 
 	Only the echo of your own voice comes back to meet you.
 
 *[cell-options]
 
-*[text strange-noise]
+*[text #strange-noise]
 	You hear a faint rustling followed by heavy footsteps. It is difficult to gauge how far away they are, but the footsteps seem to be heading toward you.
 
-	[>continue]
+	[>continue<]
 
 	As they get closer, you notice there is a mechanical sound to the movement and the footfalls are unreasonably heavy. You remember that you are wearing the jumpsuit of a robotics company and are struck by the distinct feeling that whatever is on the other side of that door is not human...
 
 *[choice]
-	[>option] To Be Continued...
+	[>option<] To Be Continued...
 
 *[scene]
 
