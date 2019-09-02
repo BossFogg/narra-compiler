@@ -260,6 +260,7 @@ output.saveChoice = function (tag, scene, source) {
 	choiceContent = this.sanitize(choiceRaw);
 	let options = this.getOptions(choiceContent, tag.startPos);
 	console.log(options);
+	
 }
 
 output.getOptions = function (choiceStr, pos) {
@@ -466,8 +467,7 @@ output.parseOption = function (optStr, choicePos, optionIndex) {
 	if (conditionalLink) codeString += "}";
 	if (conditionalDisplay) codeString += "}";
 	codeString += "}";
-	option.exec = codeString;
-	return option;
+	return codeString;
 
 	function throwOptionError(choicePos, token, text) {
 		let unexpectedMsg1 = "Unexpected token " + token.token + " at position ";
