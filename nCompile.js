@@ -28,13 +28,20 @@ let output = {
 	contentCount: 0,
 	scanner: scanner,
 	scaffold: {
-		scenes: {},
+		scenes: {
+			nextIndex: 0
+		},
 		content: {
-			next: "",
-			tagList: []
+			nextIndex: 0,
+			tagList: [],
+		},
+		choices: {
+			current: []
 		}
 	}
 };
+
+output.scaffold.content.choices = output.scaffold.choices;
 
 output.parseNarra = function (narra) {
 	let source = narra.match(/[\s\S]*?(\r\n|\r|\n)/g);
@@ -251,35 +258,227 @@ output.saveChoice = function (tag, scene, source) {
 	this.contentCount++;
 	let choiceRaw = this.getTagContent(tag, source);
 	choiceContent = this.sanitize(choiceRaw);
-	let options = this.getOptions(choiceContent);
-	//console.log(options);
+	let options = this.getOptions(choiceContent, tag.startPos);
+	console.log(options);
 }
 
-output.getOptions = function (choiceStr) {
+output.getOptions = function (choiceStr, pos) {
 	choiceStr += "[";
 	let choiceMatch = choiceStr.match(/\[>[\s\S]*?(?=\[)/g);
 	let options = [];
-	for (let option of choiceMatch) {
-		options.push(this.parseOption(option))
+	for (let i = 0; i < choiceMatch.length; i++) {
+		options.push(this.parseOption(choiceMatch[i], pos, i))
 	}
 	return options;
 }
 
-output.parseOption = function (optStr) {
+output.parseOption = function (optStr, choicePos, optionIndex) {
 	let option = {
 		tag: optStr.match(/(?<=\[>\s*)\S[\s\S]*\S(?=\s*<\])/)[0],
-		text: optStr.match(/(?<=\<]\s*)\S[\s\S]*/)[0]
-	};
+		text: optStr.match(/(?<=\<]\s*)\S[\s\S]*/)[0],
+	}
+	option.text = option.text.replace(/[\r\n]/g, "");
 	let tokens = this.tokenizeAction(option.tag);
 	console.log(tokens);
-
+	let codeString = "{";
+	let conditionalDisplay = null;
+	let conditionalLink = null;
+	let expressionExpected = false;
+	let link1Found = false;
+	let link2Found = null;
 	//run through token list and piece together what needs to happen
+	for (let token of tokens) {
+		let addToken = true;
+		let prepend = "";
+		let append = "";
+		if (conditionalDisplay === null) {
+			if (token.token == "if") {
+				conditionalDisplay = true;
+				expressionExpected = true;
+			}
+			else if (token.token == "option") {
+				conditionalDisplay = false;
+				optionFound = true;
+				addToken = false;
+			}
+			else {
+				throwOptionError(choicePos, token, "expected IF or OPTION");
+				addToken = false;
+			}
+		}
+		else if (conditionalDisplay === true) {
+			if (expressionExpected) {
+				if (token.type == "expression") {
+					append = "{";
+					expressionExpected = false;
+				}
+				else {
+					throwOptionError(choicePos, token, "expected epression");
+					addToken = false;
+				}
+			}
+			else if (!optionFound) {
+				if (token.token == "option") optionFound = true;
+				else throwOptionError(choicePos, token, "expected OPTION keyword");
+				addToken = false;
+			}
+			else if (conditionalLink === null) {
+				if (token.token == "if") {
+					conditionalLink = true;
+					expressionExpected = true;
+				}
+				else if (token.token == "option") {
+					conditionalLink = false;
+					optionFound = true;
+					addToken = false;
+				}
+				else if (token.token != "else") {
+					conditionalLink = false;
+					link1Found = true;
+					prepend = "this.choices.current.push({link:'";
+					append = "',text:'" + option.text + "'});";
+				}
+				else {
+					throwOptionError(choicePos, token, "expected IF or link");
+					addToken = false;
+				}
+			}
+			else if (conditionalLink === true) {
+				if (expressionExpected) {
+					if (token.type == "expression") {
+						append = "{";
+						expressionExpected = false;
+					}
+					else {
+						throwOptionError(choicePos, token, "expected epression");
+						addToken = false;
+					}
+				}
+				else if (!link1Found) {
+					if (token.token != "option" && token.token != "if" && token.token != "else") {
+						link1Found = true;
+						prepend = "this.choices.current.push({link:'";
+						append = "',text:'" + option.text + "'});";
+					}
+					else {
+						throwOptionError(choicePos, token, "expected link");
+						addToken = false;
+					}
+				}
+				else if (token.token == "else") {
+					prepend = "}";
+					append = "{";
+					link2Found = false;
+				}
+				else if (link2Found === false) {
+					if (token.token != "option" && token.token != "if" && token.token != "else") {
+						link2Found = true;
+						prepend = "this.choices.current.push({link:'";
+						append = "',text:'" + option.text + "'});";
+					}
+					else {
+						throwOptionError(choicePos, token, "expected link");
+						addToken = false;
+					}
+				}
+				else {
+					throwOptionError(choicePos, token, "no token expected");
+				}
+			}
+		}
+		else {
+			if (expressionExpected) {
+				if (token.type == "expression") {
+					append = "{";
+					expressionExpected = false;
+				}
+				else {
+					throwOptionError(choicePos, token, "expected epression");
+					addToken = false;
+				}
+			}
+			else if (conditionalLink === null) {
+				if (token.token == "if") {
+					conditionalLink = true;
+					expressionExpected = true;
+				}
+				else if (token.token == "option") {
+					conditionalLink = false;
+					optionFound = true;
+					addToken = false;
+				}
+				else if (token.token != "else") {
+					conditionalLink = false;
+					link1Found = true;
+					prepend = "this.choices.current.push({link:'";
+					append = "',text:'" + option.text + "'});";
+				}
+				else {
+					throwOptionError(choicePos, token, "expected IF or link");
+					addToken = false;
+				}
+			}
+			else if (conditionalLink === true) {
+				if (expressionExpected) {
+					if (token.type == "expression") {
+						append = "{";
+						expressionExpected = false;
+					}
+					else {
+						throwOptionError(choicePos, token, "expected epression");
+						addToken = false;
+					}
+				}
+				else if (!link1Found) {
+					if (token.token != "option" && token.token != "if" && token.token != "else") {
+						link1Found = true;
+						prepend = "this.choices.current.push({link:'";
+						append = "',text:'" + option.text + "'});";
+					}
+					else {
+						throwOptionError(choicePos, token, "expected link");
+						addToken = false;
+					}
+				}
+				else if (token.token == "else") {
+					prepend = "}";
+					append = "{";
+					link2Found = false;
+				}
+				else if (link2Found === false) {
+					if (token.token != "option" && token.token != "if" && token.token != "else") {
+						link2Found = true;
+						prepend = "this.choices.current.push({link:'";
+						append = "',text:'" + option.text + "'});";
+					}
+					else {
+						throwOptionError(choicePos, token, "expected link");
+						addToken = false;
+					}
+				}
+				else {
+					throwOptionError(choicePos, token, "no token expected");
+				}
+			}
+		}
+		if (addToken) codeString += prepend + token.token + append;
+	}
+	if (conditionalLink) codeString += "}";
+	if (conditionalDisplay) codeString += "}";
+	codeString += "}";
+	option.exec = codeString;
+	return option;
 
-	return optStr;
+	function throwOptionError(choicePos, token, text) {
+		let unexpectedMsg1 = "Unexpected token " + token.token + " at position ";
+		let unexpectedMsg2 = " for option " + optionIndex + " of choice at " + choicePos.line + "," + choicePos.pos + ": ";
+		console.log(unexpectedMsg1 + token.pos + unexpectedMsg2 + text)
+	}
 }
 
 output.tokenizeAction = function (actStr) {
 	let tokens = [];
+	actStr = actStr.toLowerCase();
 	let parenthesis = 0;
 	let currToken = {
 		token: "",
@@ -288,8 +487,14 @@ output.tokenizeAction = function (actStr) {
 	for (let i = 0; i < actStr.length; i++) {
 		//(expression) OPTIONAL
 		if (!currToken.type) {
-			if (actStr[i] == "(") currToken.type = "expression";
-			else if (!actStr[i].match(/\s/)) currToken.type = "actionParam";
+			if (actStr[i] == "(") {
+				currToken.type = "expression";
+				currToken.pos = i;
+			}
+			else if (!actStr[i].match(/\s/)) {
+				currToken.type = "actionParam";
+				currToken.pos = i;
+			}
 		}
 		else if (actStr[i].match(/\s/) && !parenthesis) {
 			tokens.push(currToken);
@@ -300,7 +505,7 @@ output.tokenizeAction = function (actStr) {
 		}
 		if (currToken.type == "expression") {
 			if (actStr[i] == "(") parenthesis++;
-			else if (actStr[i] == ")") parenthesis --;
+			else if (actStr[i] == ")") parenthesis--;
 		}
 		if (currToken.type) currToken.token += actStr[i];
 	}
