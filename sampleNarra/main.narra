@@ -122,8 +122,6 @@
 	As they get closer, you notice there is a mechanical sound to the movement and the footfalls are unreasonably heavy. You remember that you are wearing the jumpsuit of a robotics company and are struck by the distinct feeling that whatever is on the other side of that door is not human...
 
 *[choice]
-	[>option<] To Be Continued...
-
-*[scene]
+	[>option start<] To Be Continued...
 
 *[end]

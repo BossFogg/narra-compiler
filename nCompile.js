@@ -34,6 +34,14 @@ let output = {
 		content: {
 			nextIndex: 0,
 			tagList: [],
+			loadChoice: function(options) {
+				for (let option of options) {
+					let exec;
+					try { exec = new Function(option); }
+					catch { console.log("Unable to compile option code " + option); }
+					if (exec) exec();
+				}
+			}
 		},
 		choices: {
 			current: []
@@ -213,7 +221,11 @@ output.parseElements = function (tags, source) {
 			}
 		}
 		else if (tag.link) {
-			
+			if (scene) {
+				tag.flowIndex = scene.flow.length;
+				scene.flow.push(tag);
+			}
+			else skipMsg(tag, " because it is not inside a valid scene!");
 		}
 	}
 
@@ -247,7 +259,7 @@ output.saveText = function (tag, scene, source) {
 	this.contentCount++;
 	let textContent = this.getTagContent(tag, source);
 	textContent = this.sanitize(textContent);
-	scene.flow.push(tag.label);
+	scene.flow.push(tag);
 	this.scaffold.content.tagList.push(tag);
 	this.scaffold.content[tag.label] = textContent;
 }
@@ -259,8 +271,9 @@ output.saveChoice = function (tag, scene, source) {
 	let choiceRaw = this.getTagContent(tag, source);
 	choiceContent = this.sanitize(choiceRaw);
 	let options = this.getOptions(choiceContent, tag.startPos);
-	console.log(options);
-	
+	scene.flow.push(tag);
+	this.scaffold.content.tagList.push(tag);
+	this.scaffold.content[tag.label] = options;
 }
 
 output.getOptions = function (choiceStr, pos) {
@@ -280,8 +293,8 @@ output.parseOption = function (optStr, choicePos, optionIndex) {
 	}
 	option.text = option.text.replace(/[\r\n]/g, "");
 	let tokens = this.tokenizeAction(option.tag);
-	console.log(tokens);
-	let codeString = "{";
+	//console.log(tokens);
+	let codeString = "\"{";
 	let conditionalDisplay = null;
 	let conditionalLink = null;
 	let expressionExpected = false;
@@ -466,7 +479,7 @@ output.parseOption = function (optStr, choicePos, optionIndex) {
 	}
 	if (conditionalLink) codeString += "}";
 	if (conditionalDisplay) codeString += "}";
-	codeString += "}";
+	codeString += "}\"";
 	return codeString;
 
 	function throwOptionError(choicePos, token, text) {
@@ -521,7 +534,7 @@ output.saveScript = function (tag, scene, source) {
 	let scriptMatch = scriptRaw.match(/{[\s\S]*?}(?=\*)/);
 	let scriptContent = "{}";
 	if (scriptMatch) scriptContent = scriptMatch[0];
-	scene.flow.push(tag.label);
+	scene.flow.push(tag);
 	this.scaffold.content.tagList.push(tag);
 	this.scaffold.content[tag.label] = new Function (scriptContent);
 }
