@@ -271,6 +271,7 @@ output.saveChoice = function (tag, scene, source) {
 	let choiceRaw = this.getTagContent(tag, source);
 	choiceContent = this.sanitize(choiceRaw);
 	let options = this.getOptions(choiceContent, tag.startPos);
+	console.log(options);
 	scene.flow.push(tag);
 	this.scaffold.content.tagList.push(tag);
 	this.scaffold.content[tag.label] = options;
@@ -298,6 +299,7 @@ output.parseOption = function (optStr, choicePos, optionIndex) {
 	let conditionalDisplay = null;
 	let conditionalLink = null;
 	let expressionExpected = false;
+	let optionFound = false;
 	let link1Found = false;
 	let link2Found = null;
 	//run through token list and piece together what needs to happen
@@ -305,176 +307,94 @@ output.parseOption = function (optStr, choicePos, optionIndex) {
 		let addToken = true;
 		let prepend = "";
 		let append = "";
-		if (conditionalDisplay === null) {
-			if (token.token == "if") {
-				conditionalDisplay = true;
-				expressionExpected = true;
-			}
-			else if (token.token == "option") {
-				conditionalDisplay = false;
+		
+		if (!optionFound) {
+			if (token.token == "option") {
 				optionFound = true;
 				addToken = false;
 			}
+			else if (token.token == "if" && !conditionalDisplay) {
+				conditionalDisplay = true;
+				expressionExpected = true;
+			}
+			else if (token.type == "expression" && expressionExpected) {
+				append = "{";
+				expressionExpected = false;
+			}
 			else {
-				throwOptionError(choicePos, token, "expected IF or OPTION");
+				throwOptionError(choicePos, token, "expected OPTION keyword");
 				addToken = false;
 			}
 		}
-		else if (conditionalDisplay === true) {
-			if (expressionExpected) {
-				if (token.type == "expression") {
+		else if (!link1Found) {
+			if (token.token == "if") {
+				if (!conditionalLink) {
+					conditionalLink = true;
+					expressionExpected = true;
+				}
+				else if (expressionExpected) {
+					throwOptionError(choicePos, token, "expected expression");
+					addToken = false;
+				}
+				else {
+					throwOptionError(choicePos, token, "link expected");
+					addToken = false;
+				}
+			}
+			else if (token.type == "expression") {
+				if (expressionExpected) {
 					append = "{";
 					expressionExpected = false;
 				}
 				else {
-					throwOptionError(choicePos, token, "expected epression");
+					throwOptionError(choicePos, token, "link expected");
 					addToken = false;
 				}
 			}
-			else if (!optionFound) {
-				if (token.token == "option") optionFound = true;
-				else throwOptionError(choicePos, token, "expected OPTION keyword");
+			else if (token.token != "else" && token.token != "option") {
+				link1Found = true;
+				prepend = "this.choices.current.push({link:'";
+				append = "',text:'" + option.text + "'});";
+			}
+			else {
+				throwOptionError(choicePos, token, "link expected");
 				addToken = false;
 			}
-			else if (conditionalLink === null) {
-				if (token.token == "if") {
-					conditionalLink = true;
-					expressionExpected = true;
-				}
-				else if (token.token == "option") {
-					conditionalLink = false;
-					optionFound = true;
-					addToken = false;
-				}
-				else if (token.token != "else") {
-					conditionalLink = false;
-					link1Found = true;
-					prepend = "this.choices.current.push({link:'";
-					append = "',text:'" + option.text + "'});";
-				}
-				else {
-					throwOptionError(choicePos, token, "expected IF or link");
-					addToken = false;
-				}
-			}
-			else if (conditionalLink === true) {
-				if (expressionExpected) {
-					if (token.type == "expression") {
-						append = "{";
-						expressionExpected = false;
-					}
-					else {
-						throwOptionError(choicePos, token, "expected epression");
-						addToken = false;
-					}
-				}
-				else if (!link1Found) {
-					if (token.token != "option" && token.token != "if" && token.token != "else") {
-						link1Found = true;
-						prepend = "this.choices.current.push({link:'";
-						append = "',text:'" + option.text + "'});";
-					}
-					else {
-						throwOptionError(choicePos, token, "expected link");
-						addToken = false;
-					}
-				}
-				else if (token.token == "else") {
+		}
+		else if (conditionalLink) {
+			if (link2Found === null) {
+				if (token.token == "else") {
 					prepend = "}";
 					append = "{";
 					link2Found = false;
 				}
-				else if (link2Found === false) {
-					if (token.token != "option" && token.token != "if" && token.token != "else") {
-						link2Found = true;
-						prepend = "this.choices.current.push({link:'";
-						append = "',text:'" + option.text + "'});";
-					}
-					else {
-						throwOptionError(choicePos, token, "expected link");
-						addToken = false;
-					}
-				}
-				else {
-					throwOptionError(choicePos, token, "no token expected");
-				}
-			}
-		}
-		else {
-			if (expressionExpected) {
-				if (token.type == "expression") {
-					append = "{";
-					expressionExpected = false;
-				}
-				else {
-					throwOptionError(choicePos, token, "expected epression");
-					addToken = false;
-				}
-			}
-			else if (conditionalLink === null) {
-				if (token.token == "if") {
-					conditionalLink = true;
-					expressionExpected = true;
-				}
-				else if (token.token == "option") {
-					conditionalLink = false;
-					optionFound = true;
-					addToken = false;
-				}
-				else if (token.token != "else") {
-					conditionalLink = false;
-					link1Found = true;
+				else if (token.token != "if" && token.token != "option" && token.type != "expression") {
+					link2Found = true;
 					prepend = "this.choices.current.push({link:'";
 					append = "',text:'" + option.text + "'});";
 				}
 				else {
-					throwOptionError(choicePos, token, "expected IF or link");
+					throwOptionError(choicePos, token, "ELSE or link expected");
 					addToken = false;
 				}
 			}
-			else if (conditionalLink === true) {
-				if (expressionExpected) {
-					if (token.type == "expression") {
-						append = "{";
-						expressionExpected = false;
-					}
-					else {
-						throwOptionError(choicePos, token, "expected epression");
-						addToken = false;
-					}
-				}
-				else if (!link1Found) {
-					if (token.token != "option" && token.token != "if" && token.token != "else") {
-						link1Found = true;
-						prepend = "this.choices.current.push({link:'";
-						append = "',text:'" + option.text + "'});";
-					}
-					else {
-						throwOptionError(choicePos, token, "expected link");
-						addToken = false;
-					}
-				}
-				else if (token.token == "else") {
-					prepend = "}";
-					append = "{";
-					link2Found = false;
-				}
-				else if (link2Found === false) {
-					if (token.token != "option" && token.token != "if" && token.token != "else") {
-						link2Found = true;
-						prepend = "this.choices.current.push({link:'";
-						append = "',text:'" + option.text + "'});";
-					}
-					else {
-						throwOptionError(choicePos, token, "expected link");
-						addToken = false;
-					}
+			else if (link2Found === false) {
+				if (token.token != "if" && token.token != "else" && token.token != "option" && token.type != "expression") {
+					link2Found = true;
+					prepend = "this.choices.current.push({link:'";
+					append = "',text:'" + option.text + "'});";
 				}
 				else {
-					throwOptionError(choicePos, token, "no token expected");
+					throwOptionError(choicePos, token, "link expected");
+					addToken = false;
 				}
 			}
+			else {
+				throwOptionError(choicePos, token, "No further parameters expected");
+				addToken = false;
+			}
 		}
+		
 		if (addToken) codeString += prepend + token.token + append;
 	}
 	if (conditionalLink) codeString += "}";
